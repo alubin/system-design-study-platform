@@ -15,7 +15,7 @@ import {
   getDaysUntilInterview,
   getTotalStudyTime,
 } from '@/lib/storage'
-import { categories } from '@/content/topics'
+import { categories, topics } from '@/content/topics'
 import { Book, Calendar, Clock, Flame, GraduationCap, Target, TrendingUp } from 'lucide-react'
 
 export default function Home() {
@@ -27,6 +27,7 @@ export default function Home() {
     daysUntil: null as number | null,
     totalStudyTime: 0,
   })
+  const [categoryProgress, setCategoryProgress] = useState<Record<string, number>>({})
 
   useEffect(() => {
     setMounted(true)
@@ -39,6 +40,19 @@ export default function Home() {
       daysUntil: getDaysUntilInterview(),
       totalStudyTime: getTotalStudyTime(),
     })
+
+    // Calculate progress per category
+    const categoryProgressMap: Record<string, number> = {}
+    categories.forEach(category => {
+      const categoryTopics = topics.filter(t => t.category === category.id)
+      const completedInCategory = categoryTopics.filter(t =>
+        userProgress.topicsCompleted.includes(t.id)
+      ).length
+      categoryProgressMap[category.id] = categoryTopics.length > 0
+        ? (completedInCategory / categoryTopics.length) * 100
+        : 0
+    })
+    setCategoryProgress(categoryProgressMap)
   }, [])
 
   if (!mounted) {
@@ -143,17 +157,20 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {categories.map(category => (
-                  <div key={category.id}>
-                    <div className="flex justify-between mb-2">
-                      <span className="text-sm font-medium">{category.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {Math.round(Math.random() * 100)}%
-                      </span>
+                {categories.map(category => {
+                  const categoryPercentage = categoryProgress[category.id] || 0
+                  return (
+                    <div key={category.id}>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">{category.name}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {Math.round(categoryPercentage)}%
+                        </span>
+                      </div>
+                      <Progress value={categoryPercentage} className="h-2" />
                     </div>
-                    <Progress value={Math.random() * 100} className="h-2" />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
@@ -244,26 +261,30 @@ export default function Home() {
 
         {/* Topics by Category */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map(category => (
-            <Link key={category.id} href={`/topics/${category.id}`}>
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                <CardHeader>
-                  <CardTitle className="text-lg">{category.name}</CardTitle>
-                  <CardDescription>
-                    {Math.round(Math.random() * 8) + 2} topics
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <Progress value={Math.random() * 100} className="h-2 flex-1 mr-4" />
-                    <Badge variant="secondary">
-                      {Math.round(Math.random() * 100)}%
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {categories.map(category => {
+            const categoryTopics = topics.filter(t => t.category === category.id)
+            const categoryPercentage = categoryProgress[category.id] || 0
+            return (
+              <Link key={category.id} href={`/topics/${category.id}`}>
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">{category.name}</CardTitle>
+                    <CardDescription>
+                      {categoryTopics.length} topic{categoryTopics.length !== 1 ? 's' : ''}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <Progress value={categoryPercentage} className="h-2 flex-1 mr-4" />
+                      <Badge variant="secondary">
+                        {Math.round(categoryPercentage)}%
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            )
+          })}
         </div>
       </div>
     </main>
